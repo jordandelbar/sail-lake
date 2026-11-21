@@ -1,0 +1,11 @@
+[project]
+name = "fetcher"
+version = "0.1.0"
+description = "Polls the USGS feed and publishes events to NATS JetStream"
+requires-python = "==3.12.*"
+dependencies = [
+    "nats-py==2.11.0",
+]
+
+[tool.uv]
+package = false

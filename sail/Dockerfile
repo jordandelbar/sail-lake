@@ -1,4 +1,8 @@
-# Upstream "quick-start" image (pip wheel). No public image exists.
+# Sail server + worker image (pip wheel, no public image exists). Workers reuse it.
 FROM python:3.12-slim
-RUN pip install --no-cache-dir "pysail==0.7.3" "pyspark-client==4.0.1"
-ENTRYPOINT ["/usr/local/bin/sail"]
+COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /bin/uv
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never PATH=/app/.venv/bin:$PATH
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
+ENTRYPOINT ["sail"]

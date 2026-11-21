@@ -1,5 +1,5 @@
 # Ingest on the medium node: fetcher (USGS -> NATS) and sink (NATS -> S3).
-# Scripts live in ingest/, shipped via: kubectl create configmap ingest --from-file=ingest/
+# Fetcher is a baked image (ingest/fetcher), sink config via: kubectl create configmap s3-sink --from-file=ingest/s3-sink/
 apiVersion: apps/v1
 kind: Deployment
 metadata: {name: fetcher}
@@ -11,12 +11,8 @@ spec:
       nodeSelector: {tier: medium}
       containers:
         - name: fetcher
-          # ponytail: deps resolved at start by uv, bake an image if cold starts matter
-          image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-          command: ["uv", "run", "--with", "nats-py==2.11.0", "/app/fetch.py"]
-          volumeMounts: [{name: app, mountPath: /app}]
+          image: fetcher:dev
           resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
-      volumes: [{name: app, configMap: {name: ingest}}]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -35,4 +31,4 @@ spec:
           env: [{name: FLUSH_PERIOD, value: 1m}]
           volumeMounts: [{name: app, mountPath: /app}]
           resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
-      volumes: [{name: app, configMap: {name: ingest}}]
+      volumes: [{name: app, configMap: {name: s3-sink}}]

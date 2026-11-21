@@ -1,0 +1,12 @@
+[project]
+name = "sail"
+version = "0.1.0"
+description = "Sail Spark Connect server/worker image"
+requires-python = "==3.12.*"
+dependencies = [
+    "pysail==0.7.3",
+    "pyspark-client==4.0.1", # Python UDFs run against it,
+]
+
+[tool.uv]
+package = false

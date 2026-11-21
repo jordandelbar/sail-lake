@@ -1,0 +1,22 @@
+# Instance config, shared by webserver, daemon and code servers (runs write events here).
+storage:
+  postgres:
+    postgres_db:
+      hostname: dagster-postgres
+      port: 5432
+      db_name: dagster
+      username: dagster
+      password: {env: DAGSTER_PG_PASSWORD}
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 1 # one Sail driver, keep jobs serial
+# Default run launcher: runs execute as subprocesses inside the code location pod.
+# ponytail: K8sRunLauncher (pod per run) when runs need isolation from the code server.
+# ponytail: stdout capture off (would sit in the code pod, unreadable from the UI). context.log goes to Postgres.
+compute_logs:
+  module: dagster.core.storage.noop_compute_log_manager
+  class: NoOpComputeLogManager
+telemetry:
+  enabled: false

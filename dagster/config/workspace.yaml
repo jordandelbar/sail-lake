@@ -1,0 +1,3 @@
+# Code locations are separate gRPC servers, deployed and restarted independently.
+load_from:
+  - grpc_server: {host: lake-code, port: 4000, location_name: lake}

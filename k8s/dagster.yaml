@@ -1,0 +1,89 @@
+# Dagster system on the small node: Postgres, webserver, daemon. Knows code only via workspace.yaml (gRPC).
+# Config shipped via: kubectl create configmap dagster-instance --from-file=dagster/config/
+# ponytail: emptyDir Postgres, run history is lost on pod restart. PVC when history matters.
+apiVersion: v1
+kind: Secret
+metadata: {name: dagster-pg}
+stringData: {DAGSTER_PG_PASSWORD: dagster}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: dagster-postgres}
+spec:
+  selector: {matchLabels: {app: dagster-postgres}}
+  template:
+    metadata: {labels: {app: dagster-postgres}}
+    spec:
+      nodeSelector: {tier: small}
+      tolerations: [{key: node-role.kubernetes.io/control-plane, effect: NoSchedule}]
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - {name: POSTGRES_USER, value: dagster}
+            - {name: POSTGRES_DB, value: dagster}
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: dagster-pg, key: DAGSTER_PG_PASSWORD}}}
+          ports: [{containerPort: 5432}]
+          readinessProbe: {exec: {command: [pg_isready, -U, dagster]}, periodSeconds: 5}
+          volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
+      volumes: [{name: data, emptyDir: {}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: dagster-postgres}
+spec:
+  selector: {app: dagster-postgres}
+  ports: [{port: 5432}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: dagster-webserver}
+spec:
+  selector: {matchLabels: {app: dagster-webserver}}
+  template:
+    metadata: {labels: {app: dagster-webserver}}
+    spec:
+      nodeSelector: {tier: small}
+      tolerations: [{key: node-role.kubernetes.io/control-plane, effect: NoSchedule}]
+      containers:
+        - name: webserver
+          image: dagster:1.13.31
+          command: [dagster-webserver, -h, 0.0.0.0, -p, "3000", -w, /opt/dagster/config/workspace.yaml]
+          envFrom: [{secretRef: {name: dagster-pg}}]
+          ports: [{containerPort: 3000}]
+          readinessProbe: {httpGet: {path: /server_info, port: 3000}, periodSeconds: 10}
+          volumeMounts:
+            - {name: config, mountPath: /opt/dagster/config}
+            - {name: config, mountPath: /opt/dagster/home/dagster.yaml, subPath: dagster.yaml}
+          resources: {requests: {cpu: 50m, memory: 256Mi}, limits: {memory: 512Mi}}
+      volumes: [{name: config, configMap: {name: dagster-instance}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: dagster-webserver}
+spec:
+  type: LoadBalancer # IP assigned by cloud-provider-kind (make lb), see `make ui`
+  selector: {app: dagster-webserver}
+  ports: [{port: 80, targetPort: 3000}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: dagster-daemon}
+spec:
+  selector: {matchLabels: {app: dagster-daemon}}
+  template:
+    metadata: {labels: {app: dagster-daemon}}
+    spec:
+      nodeSelector: {tier: small}
+      tolerations: [{key: node-role.kubernetes.io/control-plane, effect: NoSchedule}]
+      containers:
+        - name: daemon
+          image: dagster:1.13.31
+          command: [dagster-daemon, run, -w, /opt/dagster/config/workspace.yaml]
+          envFrom: [{secretRef: {name: dagster-pg}}]
+          volumeMounts:
+            - {name: config, mountPath: /opt/dagster/config}
+            - {name: config, mountPath: /opt/dagster/home/dagster.yaml, subPath: dagster.yaml}
+          resources: {requests: {cpu: 50m, memory: 256Mi}, limits: {memory: 512Mi}}
+      volumes: [{name: config, configMap: {name: dagster-instance}}]
