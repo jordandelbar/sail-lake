@@ -4,13 +4,13 @@ version = "0.1.0"
 description = "Dagster code location: lake assets, compute via Sail (Spark Connect)"
 requires-python = "==3.12.*"
 dependencies = [
-    "dagster==1.13.31", # must match the dagster system image
+    "dagster==1.13.31",
     "dagster-postgres==0.29.31",
     "pyspark-client==4.0.1",
 ]
 
 [dependency-groups]
-dev = ["dagster-webserver==1.13.31"] # local `uv run dagster dev -f defs.py`
+dev = ["dagster-webserver==1.13.31"]
 
 [tool.uv]
 package = false

@@ -43,9 +43,9 @@ fetcher:
 	kubectl rollout restart deploy/fetcher
 	kubectl rollout status deploy/fetcher
 
-# Local venvs for every Python project (IDE, local runs).
+# Local venvs for the Python projects (IDE, local runs).
 venvs:
-	for d in ingest/fetcher lake dagster sail; do (cd $$d && uv sync); done
+	for d in lake dagster sail; do (cd $$d && uv sync); done
 
 ui:
 	@echo http://$$(kubectl get svc dagster-webserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
