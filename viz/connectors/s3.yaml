@@ -1,0 +1,7 @@
+# versitygw. Values come from `rill start --env` (see k8s/viz.yaml), not from a .env file.
+type: connector
+driver: s3
+aws_access_key_id: "{{ .env.AWS_ACCESS_KEY_ID }}"
+aws_secret_access_key: "{{ .env.AWS_SECRET_ACCESS_KEY }}"
+endpoint: "{{ .env.AWS_ENDPOINT_URL }}" # http:// -> Rill sets USE_SSL false, path-style URLs
+region: "{{ .env.AWS_REGION }}"

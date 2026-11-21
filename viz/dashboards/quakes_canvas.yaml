@@ -1,0 +1,48 @@
+# Overview dashboard.
+type: canvas
+display_name: Earthquakes
+defaults:
+  time_range: P7D
+rows:
+  - items:
+      - width: 12
+        kpi_grid:
+          metrics_view: quakes_metrics
+          measures: [events, significant, max_mag, avg_mag, tsunami_flags]
+          comparison: [delta, percent_change]
+  - height: 480px
+    items:
+      - width: 8
+        map:
+          metrics_view: quakes_metrics
+          title: Events by location
+          geo_dimension: {field: location, type: nominal}
+          color: {measure: max_mag}
+          tooltip_dimension: {field: place, type: nominal}
+      - width: 4
+        leaderboard:
+          metrics_view: quakes_metrics
+          measures: [events, max_mag]
+          dimensions: [region]
+          num_rows: 10
+  - height: 360px
+    items:
+      - width: 8
+        stacked_bar:
+          metrics_view: quakes_metrics
+          title: Events per hour by magnitude band
+          x: {field: event_time, type: temporal}
+          y: {field: events, type: quantitative, zeroBasedOrigin: true}
+          color: {field: mag_band, type: nominal}
+      - width: 4
+        donut_chart:
+          metrics_view: quakes_metrics
+          title: Event types
+          color: {field: event_type, type: nominal}
+          measure: {field: events, type: quantitative}
+  - items:
+      - width: 12
+        table:
+          metrics_view: quakes_metrics
+          title: Strongest places
+          columns: [place, region, max_mag, events]

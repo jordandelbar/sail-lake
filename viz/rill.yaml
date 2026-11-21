@@ -1,0 +1,4 @@
+compiler: rillv1
+display_name: Sail Lake
+description: Dashboards over the lake. Reads Parquet that Dagster/Sail materialize in versitygw.
+olap_connector: duckdb

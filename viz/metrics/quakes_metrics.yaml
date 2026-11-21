@@ -1,0 +1,22 @@
+version: 1
+type: metrics_view
+display_name: Earthquakes
+model: quakes
+timeseries: event_time
+smallest_time_grain: hour
+
+dimensions:
+  - {name: region, display_name: Region, column: region}
+  - {name: mag_band, display_name: Magnitude band, column: mag_band}
+  - {name: mag_type, display_name: Magnitude type, column: mag_type}
+  - {name: event_type, display_name: Event type, column: event_type}
+  - {name: place, display_name: Place, column: place}
+  - {name: location, display_name: Location, column: location, type: geo}
+
+measures:
+  - {name: events, display_name: Events, expression: COUNT(*), format_preset: humanize}
+  - {name: significant, display_name: "Significant (M4.5+)", expression: COUNT(*) FILTER (WHERE mag >= 4.5), format_preset: humanize}
+  - {name: max_mag, display_name: Max magnitude, expression: MAX(mag), format_d3: ".1f"}
+  - {name: avg_mag, display_name: Avg magnitude, expression: AVG(mag), format_d3: ".2f"}
+  - {name: avg_depth_km, display_name: Avg depth (km), expression: AVG(depth_km), format_d3: ".1f"}
+  - {name: tsunami_flags, display_name: Tsunami flags, expression: COUNT(*) FILTER (WHERE tsunami), format_preset: humanize}

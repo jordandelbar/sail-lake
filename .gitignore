@@ -2,3 +2,5 @@ data/
 .venv/
 __pycache__/
 .ruff_cache/
+viz/tmp/
+viz/.env

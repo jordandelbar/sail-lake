@@ -1,0 +1,23 @@
+# One row per event, from the Dagster asset `quakes_events`.
+type: model
+connector: duckdb
+create_secrets_from_connectors: s3
+# Copy into DuckDB at refresh: dashboards query the local table, S3 is only read here
+materialize: true
+# Dagster rebuilds clean/quakes_events at :05, pick it up at :15
+# ponytail: fixed offset, have Dagster trigger the refresh if runs get long
+refresh:
+  cron: "15 * * * *"
+sql: |
+  SELECT
+    *,
+    ST_AsGeoJSON(ST_Point(lon, lat))::VARCHAR AS location,
+    CASE
+      WHEN mag IS NULL THEN 'unknown'
+      WHEN mag < 2 THEN '0 to 2'
+      WHEN mag < 3 THEN '2 to 3'
+      WHEN mag < 4 THEN '3 to 4'
+      WHEN mag < 5 THEN '4 to 5'
+      ELSE '5+'
+    END AS mag_band
+  FROM read_parquet('s3://lake/clean/quakes_events/*.parquet')

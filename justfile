@@ -4,6 +4,7 @@ sail_image := "sail:0.7.3"
 dagster_image := "dagster:1.13.31"
 code_image := "lake-code:dev"
 fetcher_image := "fetcher:dev"
+viz_image := "viz:dev"
 cluster := "sail-lake"
 cpk_image := "registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.12.0"
 
@@ -28,20 +29,24 @@ image:
     docker build -t {{ dagster_image }} dagster/
     docker build -t {{ code_image }} lake/
     docker build -t {{ fetcher_image }} ingest/fetcher/
-    kind load docker-image {{ sail_image }} {{ dagster_image }} {{ code_image }} {{ fetcher_image }} --name {{ cluster }}
+    docker build -t {{ viz_image }} viz/
+    kind load docker-image {{ sail_image }} {{ dagster_image }} {{ code_image }} {{ fetcher_image }} {{ viz_image }} --name {{ cluster }}
 
 configmaps:
     kubectl create configmap s3-sink --from-file=ingest/s3-sink/ --dry-run=client -o yaml | kubectl apply -f -
     kubectl create configmap dagster-instance --from-file=dagster/config/ --dry-run=client -o yaml | kubectl apply -f -
 
 deploy: configmaps
-    kubectl apply -f k8s/infra.yaml -f k8s/sail.yaml -f k8s/ingest.yaml -f k8s/dagster.yaml -f k8s/lake-code.yaml
+    kubectl apply -f k8s/infra.yaml -f k8s/sail.yaml -f k8s/ingest.yaml -f k8s/dagster.yaml -f k8s/lake-code.yaml -f k8s/viz.yaml
 
 # Redeploy user code only, Dagster system untouched
 code: (ship code_image "lake/" "lake-code")
 
 # Redeploy the fetcher only
 fetcher: (ship fetcher_image "ingest/fetcher/" "fetcher")
+
+# Redeploy the Rill dashboards only
+viz: (ship viz_image "viz/" "viz")
 
 # Build one image, load it into kind, restart its deployment
 [private]
@@ -55,9 +60,9 @@ ship image dir deployment:
 venvs:
     for d in lake dagster sail; do (cd $d && uv sync); done
 
-# Print the Dagster UI URL
+# Print the UI URLs (LoadBalancer IPs)
 ui:
-    @echo "http://$(kubectl get svc dagster-webserver -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+    @for s in dagster-webserver viz; do echo "$s: http://$(kubectl get svc $s -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"; done
 
 # Delete the cluster and the load balancer container (./data is kept)
 down:

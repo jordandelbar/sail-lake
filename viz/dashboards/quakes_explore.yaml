@@ -1,0 +1,8 @@
+# Slice and drill into any dimension/measure.
+type: explore
+display_name: Earthquakes (explore)
+metrics_view: quakes_metrics
+dimensions: "*"
+measures: "*"
+defaults:
+  time_range: P7D
