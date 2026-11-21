@@ -1,0 +1,125 @@
+# Iceberg REST catalog (Lakekeeper) on the small node, with its OWN Postgres.
+# The catalog DB holds the only pointer to each table's current metadata: losing it orphans the tables.
+# UI and API: just ui (LoadBalancer). No auth: cluster-internal testbed.
+apiVersion: v1
+kind: Secret
+metadata: {name: lakekeeper}
+stringData:
+  # ponytail: static dev secrets, same as s3-creds. Generate and store properly outside the testbed.
+  POSTGRES_PASSWORD: lakekeeper
+  LAKEKEEPER__PG_DATABASE_URL_WRITE: postgresql://lakekeeper:lakekeeper@lakekeeper-postgres:5432/lakekeeper
+  LAKEKEEPER__PG_ENCRYPTION_KEY: sail-lake-dev-encryption-key-change-me
+---
+# local-path PVC: survives pod restarts, not cluster deletion.
+# ponytail: move to a hostPath under ./data when the cluster is recreated (node resize).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: lakekeeper-postgres}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: lakekeeper-postgres}
+spec:
+  strategy: {type: Recreate} # one pod on the volume at a time
+  selector: {matchLabels: {app: lakekeeper-postgres}}
+  template:
+    metadata: {labels: {app: lakekeeper-postgres}}
+    spec:
+      nodeSelector: {tier: small}
+      tolerations: [{key: node-role.kubernetes.io/control-plane, effect: NoSchedule}]
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - {name: POSTGRES_USER, value: lakekeeper}
+            - {name: POSTGRES_DB, value: lakekeeper}
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: lakekeeper, key: POSTGRES_PASSWORD}}}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          ports: [{containerPort: 5432}]
+          readinessProbe: {exec: {command: [pg_isready, -U, lakekeeper]}, periodSeconds: 5}
+          volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
+      volumes: [{name: data, persistentVolumeClaim: {claimName: lakekeeper-postgres}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: lakekeeper-postgres}
+spec:
+  selector: {app: lakekeeper-postgres}
+  ports: [{port: 5432}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: lakekeeper}
+spec:
+  selector: {matchLabels: {app: lakekeeper}}
+  template:
+    metadata: {labels: {app: lakekeeper}}
+    spec:
+      nodeSelector: {tier: small}
+      tolerations: [{key: node-role.kubernetes.io/control-plane, effect: NoSchedule}]
+      initContainers:
+        - name: migrate # idempotent schema migrations; retries until Postgres is up
+          image: quay.io/lakekeeper/catalog:v0.15.1
+          args: [migrate]
+          envFrom: [{secretRef: {name: lakekeeper}}]
+      containers:
+        - name: lakekeeper
+          image: quay.io/lakekeeper/catalog:v0.15.1
+          args: [serve]
+          envFrom: [{secretRef: {name: lakekeeper}}]
+          ports: [{containerPort: 8181}]
+          readinessProbe: {httpGet: {path: /health, port: 8181}, periodSeconds: 5}
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: lakekeeper}
+spec:
+  type: LoadBalancer # IP assigned by cloud-provider-kind (just lb); UI at /ui
+  selector: {app: lakekeeper}
+  ports: [{port: 80, targetPort: 8181, name: lb}, {port: 8181, targetPort: 8181, name: api}]
+---
+# One-shot, idempotent: bootstrap the server, create warehouse "lake" on versitygw.
+apiVersion: batch/v1
+kind: Job
+metadata: {name: lakekeeper-init}
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector: {tier: small}
+      tolerations: [{key: node-role.kubernetes.io/control-plane, effect: NoSchedule}]
+      containers:
+        - name: init
+          image: curlimages/curl:8.17.0
+          envFrom: [{secretRef: {name: s3-creds}}]
+          command:
+            - sh
+            - -ec
+            - |
+              api=http://lakekeeper:8181/management/v1
+              until curl -sf http://lakekeeper:8181/health >/dev/null; do sleep 2; done
+              # bootstrap can only happen once; a second call is rejected, which is fine
+              curl -s -X POST $api/bootstrap -H 'Content-Type: application/json' -d '{"accept-terms-of-use": true}'
+              echo
+              code=$(curl -s -o /tmp/out -w '%{http_code}' -X POST $api/warehouse -H 'Content-Type: application/json' -d "{
+                \"warehouse-name\": \"lake\",
+                \"storage-profile\": {
+                  \"type\": \"s3\", \"flavor\": \"s3-compat\", \"bucket\": \"lake\", \"key-prefix\": \"warehouse\",
+                  \"region\": \"$AWS_REGION\", \"endpoint\": \"$AWS_ENDPOINT_URL\", \"path-style-access\": true,
+                  \"sts-enabled\": false
+                },
+                \"storage-credential\": {
+                  \"type\": \"s3\", \"credential-type\": \"access-key\",
+                  \"aws-access-key-id\": \"$AWS_ACCESS_KEY_ID\", \"aws-secret-access-key\": \"$AWS_SECRET_ACCESS_KEY\"
+                },
+                \"delete-profile\": {\"type\": \"hard\"}
+              }")
+              cat /tmp/out; echo
+              # 201 created, 409 already exists: both fine
+              [ "$code" = 201 ] || [ "$code" = 409 ]

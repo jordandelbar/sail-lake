@@ -37,7 +37,7 @@ configmaps:
     kubectl create configmap dagster-instance --from-file=dagster/config/ --dry-run=client -o yaml | kubectl apply -f -
 
 deploy: configmaps
-    kubectl apply -f k8s/infra.yaml -f k8s/sail.yaml -f k8s/ingest.yaml -f k8s/dagster.yaml -f k8s/lake-code.yaml -f k8s/viz.yaml
+    kubectl apply -f k8s/infra.yaml -f k8s/catalog.yaml -f k8s/sail.yaml -f k8s/ingest.yaml -f k8s/dagster.yaml -f k8s/lake-code.yaml -f k8s/viz.yaml
 
 # Redeploy user code only, Dagster system untouched
 code: (ship code_image "lake/" "lake-code")
@@ -62,7 +62,7 @@ venvs:
 
 # Print the UI URLs (LoadBalancer IPs)
 ui:
-    @for s in dagster-webserver viz; do echo "$s: http://$(kubectl get svc $s -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"; done
+    @for s in dagster-webserver viz lakekeeper; do echo "$s: http://$(kubectl get svc $s -o jsonpath='{.status.loadBalancer.ingress[0].ip}')$([ $s = lakekeeper ] && echo /ui)"; done
 
 # Delete the cluster and the load balancer container (./data is kept)
 down:

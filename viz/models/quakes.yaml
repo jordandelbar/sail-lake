@@ -1,13 +1,18 @@
-# One row per event, from the Dagster asset `quakes_events`.
+# One row per event: Iceberg table lake.quakes.events (Dagster asset `quakes_events`), via the Lakekeeper catalog.
 type: model
 connector: duckdb
 create_secrets_from_connectors: s3
-# Copy into DuckDB at refresh: dashboards query the local table, S3 is only read here
+# Copy into DuckDB at refresh: dashboards query the local table, the lake is only read here
 materialize: true
-# Dagster rebuilds clean/quakes_events at :05, pick it up at :15
+# Dagster commits new snapshots at :05 :20 :35 :50, pick them up 10 min later
 # ponytail: fixed offset, have Dagster trigger the refresh if runs get long
 refresh:
-  cron: "15 * * * *"
+  cron: "*/15 * * * *"
+# ACCESS_DELEGATION_MODE none: read S3 with our own secret (versitygw has no STS for vended credentials)
+pre_exec: >
+  INSTALL iceberg; LOAD iceberg;
+  ATTACH IF NOT EXISTS 'lake' AS lake (TYPE iceberg, ENDPOINT 'http://lakekeeper:8181/catalog',
+  AUTHORIZATION_TYPE 'none', ACCESS_DELEGATION_MODE 'none')
 sql: |
   SELECT
     *,
@@ -20,4 +25,4 @@ sql: |
       WHEN mag < 5 THEN '4 to 5'
       ELSE '5+'
     END AS mag_band
-  FROM read_parquet('s3://lake/clean/quakes_events/*.parquet')
+  FROM lake.quakes.events

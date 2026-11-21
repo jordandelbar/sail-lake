@@ -44,6 +44,10 @@ spec:
             - {name: SAIL_KUBERNETES__NAMESPACE, valueFrom: {fieldRef: {fieldPath: metadata.namespace}}}
             - {name: SAIL_KUBERNETES__DRIVER_POD_NAME, valueFrom: {fieldRef: {fieldPath: metadata.name}}}
             - {name: SAIL_KUBERNETES__WORKER_SERVICE_ACCOUNT_NAME, value: sail}
+            # Iceberg REST catalog (k8s/catalog.yaml); tables are addressed as lake.<namespace>.<table>
+            - name: SAIL_CATALOG__LIST
+              value: '[{type="iceberg-rest", name="lake", uri="http://lakekeeper:8181/catalog", warehouse="lake"}]'
+            - {name: SAIL_CATALOG__DEFAULT_CATALOG, value: lake}
             - name: SAIL_KUBERNETES__WORKER_POD_TEMPLATE
               value: |
                 {"spec": {"nodeSelector": {"tier": "large"},
