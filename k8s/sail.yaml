@@ -75,8 +75,11 @@ spec:
               value: "1"
             - name: SAIL_CLUSTER__WORKER_MAX_COUNT
               value: "2"
-            # ponytail: Sail plans partitions from host cores (16 here), so slots x max workers must cover that
             - name: SAIL_CLUSTER__WORKER_TASK_SLOTS
+              value: "4"
+            # Partitions per plan node. Defaults to the driver's CPU count (the host's, here), which
+            # Sail's docs say to override in cluster mode. Keep it <= max workers x task slots.
+            - name: SAIL_EXECUTION__DEFAULT_PARALLELISM
               value: "8"
             - name: SAIL_KUBERNETES__IMAGE
               value: sail:0.7.3

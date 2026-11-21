@@ -28,7 +28,9 @@ def ensure_table(spark: SparkSession, table: str, like: DataFrame) -> None:
     """Create an empty Iceberg table with `like`'s schema, once."""
     _, ns, name = table.split(".")
     like.createOrReplaceTempView("_schema_src")
-    # explicit LOCATION: Sail drops the namespace from default table paths (ns1.t and ns2.t would collide)
+    # explicit LOCATION: by default Sail uses <namespace location>/<table>, and Lakekeeper's flat
+    # layout makes every namespace location the warehouse root, so ns1.t and ns2.t would collide
+    # (docs/sail-findings.md, problem 3)
     spark.sql(
         f"CREATE TABLE IF NOT EXISTS {table} USING iceberg "
         f"LOCATION 's3://lake/warehouse/{ns}/{name}' "

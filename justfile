@@ -56,6 +56,12 @@ ship image dir deployment:
     kubectl rollout restart deploy/{{ deployment }}
     kubectl rollout status deploy/{{ deployment }}
 
+# Spark vs Sail on identical single-node pods (writes bench/results.json); ROWS=... to resize
+bench:
+    docker build -t spark-bench:4.0.1 bench/spark/
+    kind load docker-image spark-bench:4.0.1 --name {{ cluster }}
+    ./bench/run.sh
+
 # Local venvs for the Python projects (IDE, local runs)
 venvs:
     for d in lake dagster sail; do (cd $d && uv sync); done

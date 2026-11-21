@@ -1,0 +1,96 @@
+# Spark vs Sail, single node, identical Guaranteed limits on the large node. Run one at a time (bench/run.sh).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sail-bench
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: sail-bench
+  template:
+    metadata:
+      labels:
+        app: sail-bench
+    spec:
+      nodeSelector:
+        tier: large
+      containers:
+        - name: sail
+          image: sail:0.7.3
+          args: [spark, server, --ip, 0.0.0.0, --port, "15002"]
+          envFrom:
+            - secretRef:
+                name: s3-creds
+          env:
+            - name: SAIL_MODE
+              value: local
+          ports:
+            - containerPort: 15002
+          resources:
+            requests: &res
+              cpu: "2"
+              memory: 4Gi
+            limits: *res
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-bench
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: spark-bench
+  template:
+    metadata:
+      labels:
+        app: spark-bench
+    spec:
+      nodeSelector:
+        tier: large
+      containers:
+        - name: spark
+          image: spark-bench:4.0.1
+          command: [/opt/spark/sbin/start-connect-server.sh]
+          args:
+            - --master=local[2]
+            - --driver-memory=3g # leaves ~1Gi of the 4Gi limit for JVM overhead
+            # s3:// paths as in Sail, served by S3A against versitygw; creds from AWS_* env
+            - --conf=spark.hadoop.fs.s3.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+            - --conf=spark.hadoop.fs.s3a.endpoint=http://s3:7070
+            - --conf=spark.hadoop.fs.s3a.path.style.access=true
+            - --conf=spark.hadoop.fs.s3a.connection.ssl.enabled=false
+          envFrom:
+            - secretRef:
+                name: s3-creds
+          env:
+            - name: SPARK_NO_DAEMONIZE # run the connect server in the foreground
+              value: "1"
+          ports:
+            - containerPort: 15002
+          resources:
+            requests: &res
+              cpu: "2"
+              memory: 4Gi
+            limits: *res
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sail-bench
+spec:
+  selector:
+    app: sail-bench
+  ports:
+    - port: 15002
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-bench
+spec:
+  selector:
+    app: spark-bench
+  ports:
+    - port: 15002
