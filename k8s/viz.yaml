@@ -1,17 +1,25 @@
 # Rill dashboards on the medium node, reading the lake via versitygw. UI: just ui
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: viz}
+metadata:
+  name: viz
 spec:
-  selector: {matchLabels: {app: viz}}
+  selector:
+    matchLabels:
+      app: viz
   template:
-    metadata: {labels: {app: viz}}
+    metadata:
+      labels:
+        app: viz
     spec:
-      nodeSelector: {tier: medium}
+      nodeSelector:
+        tier: medium
       containers:
         - name: rill
           image: viz:dev
-          envFrom: [{secretRef: {name: s3-creds}}]
+          envFrom:
+            - secretRef:
+                name: s3-creds
           # --preview: dashboards only, no code editor. $(VAR) is expanded by Kubernetes from envFrom.
           args:
             - start
@@ -25,14 +33,28 @@ spec:
             - --env=AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)
             - --env=AWS_ENDPOINT_URL=$(AWS_ENDPOINT_URL)
             - --env=AWS_REGION=$(AWS_REGION)
-          ports: [{containerPort: 9009}]
-          readinessProbe: {httpGet: {path: /, port: 9009}, periodSeconds: 10}
-          resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 1Gi}}
+          ports:
+            - containerPort: 9009
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9009
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
 ---
 apiVersion: v1
 kind: Service
-metadata: {name: viz}
+metadata:
+  name: viz
 spec:
   type: LoadBalancer # IP assigned by cloud-provider-kind (just lb)
-  selector: {app: viz}
-  ports: [{port: 80, targetPort: 9009}]
+  selector:
+    app: viz
+  ports:
+    - port: 80
+      targetPort: 9009

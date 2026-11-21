@@ -2,33 +2,66 @@
 # Fetcher is a baked image (ingest/fetcher), sink config via: kubectl create configmap s3-sink --from-file=ingest/s3-sink/
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: fetcher}
+metadata:
+  name: fetcher
 spec:
-  selector: {matchLabels: {app: fetcher}}
+  selector:
+    matchLabels:
+      app: fetcher
   template:
-    metadata: {labels: {app: fetcher}}
+    metadata:
+      labels:
+        app: fetcher
     spec:
-      nodeSelector: {tier: medium}
+      nodeSelector:
+        tier: medium
       containers:
         - name: fetcher
           image: fetcher:dev
-          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: s3-sink}
+metadata:
+  name: s3-sink
 spec:
-  selector: {matchLabels: {app: s3-sink}}
+  selector:
+    matchLabels:
+      app: s3-sink
   template:
-    metadata: {labels: {app: s3-sink}}
+    metadata:
+      labels:
+        app: s3-sink
     spec:
-      nodeSelector: {tier: medium}
+      nodeSelector:
+        tier: medium
       containers:
         - name: connect
           image: docker.redpanda.com/redpandadata/connect:4
-          args: ["run", "/app/connect.yaml"]
-          envFrom: [{secretRef: {name: s3-creds}}]
-          env: [{name: FLUSH_PERIOD, value: 1m}]
-          volumeMounts: [{name: app, mountPath: /app}]
-          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
-      volumes: [{name: app, configMap: {name: s3-sink}}]
+          args:
+            - run
+            - /app/connect.yaml
+          envFrom:
+            - secretRef:
+                name: s3-creds
+          env:
+            - name: FLUSH_PERIOD
+              value: 1m
+          volumeMounts:
+            - name: app
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: app
+          configMap:
+            name: s3-sink

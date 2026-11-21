@@ -3,28 +3,61 @@
 # Runs execute here as subprocesses and push the heavy lifting to Sail.
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: lake-code}
+metadata:
+  name: lake-code
 spec:
-  selector: {matchLabels: {app: lake-code}}
+  selector:
+    matchLabels:
+      app: lake-code
   template:
-    metadata: {labels: {app: lake-code}}
+    metadata:
+      labels:
+        app: lake-code
     spec:
-      nodeSelector: {tier: medium}
+      nodeSelector:
+        tier: medium
       containers:
         - name: code
           image: lake-code:dev
-          envFrom: [{secretRef: {name: dagster-pg}}]
-          env: [{name: SPARK_REMOTE, value: "sc://sail:50051"}]
-          ports: [{containerPort: 4000}]
-          readinessProbe: {exec: {command: [dagster, api, grpc-health-check, -p, "4000"]}, periodSeconds: 10, timeoutSeconds: 5}
+          envFrom:
+            - secretRef:
+                name: dagster-pg
+          env:
+            - name: SPARK_REMOTE
+              value: sc://sail:50051
+          ports:
+            - containerPort: 4000
+          readinessProbe:
+            exec:
+              command:
+                - dagster
+                - api
+                - grpc-health-check
+                - -p
+                - "4000"
+            periodSeconds: 10
+            timeoutSeconds: 5
           volumeMounts:
-            - {name: config, mountPath: /opt/dagster/home/dagster.yaml, subPath: dagster.yaml}
-          resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 1Gi}}
-      volumes: [{name: config, configMap: {name: dagster-instance}}]
+            - name: config
+              mountPath: /opt/dagster/home/dagster.yaml
+              subPath: dagster.yaml
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: config
+          configMap:
+            name: dagster-instance
 ---
 apiVersion: v1
 kind: Service
-metadata: {name: lake-code}
+metadata:
+  name: lake-code
 spec:
-  selector: {app: lake-code}
-  ports: [{port: 4000}]
+  selector:
+    app: lake-code
+  ports:
+    - port: 4000

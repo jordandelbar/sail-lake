@@ -1,64 +1,119 @@
 # Sail Spark Connect server (driver) on the medium node; it spawns worker pods on the large node.
 apiVersion: v1
 kind: ServiceAccount
-metadata: {name: sail}
+metadata:
+  name: sail
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
-metadata: {name: sail}
-rules: [{apiGroups: [""], resources: [pods], verbs: ["*"]}]
+metadata:
+  name: sail
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - "*"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata: {name: sail}
-roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: sail}
-subjects: [{kind: ServiceAccount, name: sail}]
+metadata:
+  name: sail
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: sail
+subjects:
+  - kind: ServiceAccount
+    name: sail
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: sail}
+metadata:
+  name: sail
 spec:
   replicas: 1 # a Spark session lives in one driver pod
-  selector: {matchLabels: {app: sail}}
+  selector:
+    matchLabels:
+      app: sail
   template:
-    metadata: {labels: {app: sail}}
+    metadata:
+      labels:
+        app: sail
     spec:
       serviceAccountName: sail
-      nodeSelector: {tier: medium}
+      nodeSelector:
+        tier: medium
       containers:
         - name: server
           image: sail:0.7.3
-          args: ["spark", "server", "--ip", "0.0.0.0", "--port", "50051"]
-          ports: [{containerPort: 50051}]
-          envFrom: [{secretRef: {name: s3-creds}}]
+          args:
+            - spark
+            - server
+            - --ip
+            - "0.0.0.0"
+            - --port
+            - "50051"
+          ports:
+            - containerPort: 50051
+          envFrom:
+            - secretRef:
+                name: s3-creds
           env:
-            - {name: RUST_LOG, value: info}
-            - {name: SAIL_MODE, value: kubernetes-cluster}
-            - {name: SAIL_CLUSTER__DRIVER_LISTEN_HOST, value: 0.0.0.0}
-            - {name: SAIL_CLUSTER__DRIVER_EXTERNAL_HOST, valueFrom: {fieldRef: {fieldPath: status.podIP}}}
-            - {name: SAIL_CLUSTER__WORKER_INITIAL_COUNT, value: "1"}
-            - {name: SAIL_CLUSTER__WORKER_MAX_COUNT, value: "2"}
+            - name: RUST_LOG
+              value: info
+            - name: SAIL_MODE
+              value: kubernetes-cluster
+            - name: SAIL_CLUSTER__DRIVER_LISTEN_HOST
+              value: 0.0.0.0
+            - name: SAIL_CLUSTER__DRIVER_EXTERNAL_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: SAIL_CLUSTER__WORKER_INITIAL_COUNT
+              value: "1"
+            - name: SAIL_CLUSTER__WORKER_MAX_COUNT
+              value: "2"
             # ponytail: Sail plans partitions from host cores (16 here), so slots x max workers must cover that
-            - {name: SAIL_CLUSTER__WORKER_TASK_SLOTS, value: "8"}
-            - {name: SAIL_KUBERNETES__IMAGE, value: sail:0.7.3}
-            - {name: SAIL_KUBERNETES__NAMESPACE, valueFrom: {fieldRef: {fieldPath: metadata.namespace}}}
-            - {name: SAIL_KUBERNETES__DRIVER_POD_NAME, valueFrom: {fieldRef: {fieldPath: metadata.name}}}
-            - {name: SAIL_KUBERNETES__WORKER_SERVICE_ACCOUNT_NAME, value: sail}
+            - name: SAIL_CLUSTER__WORKER_TASK_SLOTS
+              value: "8"
+            - name: SAIL_KUBERNETES__IMAGE
+              value: sail:0.7.3
+            - name: SAIL_KUBERNETES__NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SAIL_KUBERNETES__DRIVER_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: SAIL_KUBERNETES__WORKER_SERVICE_ACCOUNT_NAME
+              value: sail
             # Iceberg REST catalog (k8s/catalog.yaml); tables are addressed as lake.<namespace>.<table>
             - name: SAIL_CATALOG__LIST
               value: '[{type="iceberg-rest", name="lake", uri="http://lakekeeper:8181/catalog", warehouse="lake"}]'
-            - {name: SAIL_CATALOG__DEFAULT_CATALOG, value: lake}
+            - name: SAIL_CATALOG__DEFAULT_CATALOG
+              value: lake
             - name: SAIL_KUBERNETES__WORKER_POD_TEMPLATE
               value: |
                 {"spec": {"nodeSelector": {"tier": "large"},
                   "containers": [{"name": "worker",
                     "envFrom": [{"secretRef": {"name": "s3-creds"}}],
                     "resources": {"requests": {"cpu": "2", "memory": "4Gi"}, "limits": {"memory": "6Gi"}}}]}}
-          resources: {requests: {cpu: 500m, memory: 1Gi}, limits: {memory: 3Gi}}
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              memory: 3Gi
 ---
 apiVersion: v1
 kind: Service
-metadata: {name: sail}
+metadata:
+  name: sail
 spec:
-  selector: {app: sail}
-  ports: [{port: 50051}]
+  selector:
+    app: sail
+  ports:
+    - port: 50051
