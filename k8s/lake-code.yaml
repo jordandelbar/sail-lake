@@ -1,5 +1,5 @@
 # Code location "lake" on the medium node. Redeploy alone on code changes:
-#   make code   (rebuild image, load into kind, restart this deployment)
+#   just code   (rebuild image, load into kind, restart this deployment)
 # Runs execute here as subprocesses and push the heavy lifting to Sail.
 apiVersion: apps/v1
 kind: Deployment

@@ -63,7 +63,7 @@ apiVersion: v1
 kind: Service
 metadata: {name: dagster-webserver}
 spec:
-  type: LoadBalancer # IP assigned by cloud-provider-kind (make lb), see `make ui`
+  type: LoadBalancer # IP assigned by cloud-provider-kind (just lb), see `just ui`
   selector: {app: dagster-webserver}
   ports: [{port: 80, targetPort: 3000}]
 ---
