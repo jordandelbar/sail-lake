@@ -1,0 +1,38 @@
+# Ingest on the medium node: fetcher (USGS -> NATS) and sink (NATS -> S3).
+# Scripts live in ingest/, shipped via: kubectl create configmap ingest --from-file=ingest/
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: fetcher}
+spec:
+  selector: {matchLabels: {app: fetcher}}
+  template:
+    metadata: {labels: {app: fetcher}}
+    spec:
+      nodeSelector: {tier: medium}
+      containers:
+        - name: fetcher
+          # ponytail: deps resolved at start by uv, bake an image if cold starts matter
+          image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+          command: ["uv", "run", "--with", "nats-py==2.11.0", "/app/fetch.py"]
+          volumeMounts: [{name: app, mountPath: /app}]
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
+      volumes: [{name: app, configMap: {name: ingest}}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: s3-sink}
+spec:
+  selector: {matchLabels: {app: s3-sink}}
+  template:
+    metadata: {labels: {app: s3-sink}}
+    spec:
+      nodeSelector: {tier: medium}
+      containers:
+        - name: connect
+          image: docker.redpanda.com/redpandadata/connect:4
+          args: ["run", "/app/connect.yaml"]
+          envFrom: [{secretRef: {name: s3-creds}}]
+          env: [{name: FLUSH_PERIOD, value: 1m}]
+          volumeMounts: [{name: app, mountPath: /app}]
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {memory: 256Mi}}
+      volumes: [{name: app, configMap: {name: ingest}}]

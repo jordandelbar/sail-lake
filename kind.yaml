@@ -1,0 +1,39 @@
+# 3 nodes, same host, different allocatable via system-reserved.
+# Host: 16 cpu / 30Gi. Run `kind create cluster` from the repo root (extraMounts path is relative).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: sail-lake
+nodes:
+  - role: control-plane # small: ~2 cpu / 4Gi, infra (nats, s3)
+    extraMounts:
+      - hostPath: ./data/s3
+        containerPath: /data/s3
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            - name: system-reserved
+              value: cpu=14,memory=26Gi
+            - name: node-labels
+              value: tier=small
+  - role: worker # medium: ~4 cpu / 8Gi, sail driver, ingest
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            - name: system-reserved
+              value: cpu=12,memory=22Gi
+            - name: node-labels
+              value: tier=medium
+  - role: worker # large: ~8 cpu / 16Gi, sail workers
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            - name: system-reserved
+              value: cpu=8,memory=14Gi
+            - name: node-labels
+              value: tier=large

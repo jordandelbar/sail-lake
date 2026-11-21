@@ -1,0 +1,18 @@
+# One-shot Spark Connect client. Script shipped via: kubectl create configmap jobs --from-file=jobs/
+# Rerun: kubectl delete job aggregate --ignore-not-found && kubectl apply -f k8s/job-aggregate.yaml
+apiVersion: batch/v1
+kind: Job
+metadata: {name: aggregate}
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector: {tier: medium}
+      containers:
+        - name: job
+          image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+          command: ["uv", "run", "--with", "pyspark-client==4.0.1", "/app/aggregate.py"]
+          volumeMounts: [{name: app, mountPath: /app}]
+          resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 1Gi}}
+      volumes: [{name: app, configMap: {name: jobs}}]

@@ -1,0 +1,24 @@
+# Redpanda Connect: JetStream durable consumer -> NDJSON batches in s3://lake/raw/quakes/dt=YYYY-MM-DD/
+# Messages are acked only after the S3 PUT succeeds.
+input:
+  nats_jetstream:
+    urls: [nats://nats:4222]
+    stream: QUAKES
+    subject: quakes.raw
+    durable: s3-sink
+    deliver: all
+output:
+  aws_s3:
+    bucket: lake
+    path: 'raw/quakes/dt=${! now().ts_format("2006-01-02") }/${! timestamp_unix_nano() }.jsonl'
+    endpoint: http://s3:7070
+    force_path_style_urls: true
+    region: us-east-1
+    credentials:
+      id: ${AWS_ACCESS_KEY_ID}
+      secret: ${AWS_SECRET_ACCESS_KEY}
+    content_type: application/x-ndjson
+    batching:
+      count: 1000
+      period: ${FLUSH_PERIOD:5m}
+      processors: [{archive: {format: lines}}]
