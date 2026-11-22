@@ -123,6 +123,11 @@ bench:
     kind load docker-image spark-bench:4.0.1 --name {{ cluster }}
     ./bench/run.sh
 
+# Unit and contract tests: Go fetcher, and lake transformations on an embedded Sail (no cluster)
+test:
+    cd ingest/fetcher && go vet ./... && go test ./...
+    cd lake && uv run pytest -q
+
 # Local venvs for the Python projects (IDE, local runs)
 venvs:
     for d in lake dagster sail; do (cd $d && uv sync); done

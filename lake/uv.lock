@@ -447,6 +447,15 @@ wheels = [
 ]
 
 [[package]]
+name = "iniconfig"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/e1/2069291243c926a2ff1cd706c7f3eeb9b62144bf60f77c9fb9ff2fb26bd3/iniconfig-2.3.1.tar.gz", hash = "sha256:67f4b9c50da0dedf52af349e7749a80a9057a5031199791b906c3bb3ae878960", size = 21209, upload-time = "2026-10-06T22:48:38.076Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/56/43/4ca9e49d27a1fcf6bece6f6aec0ea46bb9112489b93d4b688fb415457bdb/iniconfig-2.3.1-py3-none-any.whl", hash = "sha256:9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7", size = 7552, upload-time = "2026-10-06T22:48:36.959Z" },
+]
+
+[[package]]
 name = "jinja2"
 version = "3.1.6"
 source = { registry = "https://pypi.org/simple" }
@@ -471,6 +480,8 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "dagster-webserver" },
+    { name = "pysail" },
+    { name = "pytest" },
 ]
 
 [package.metadata]
@@ -481,7 +492,11 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "dagster-webserver", specifier = "==1.13.31" }]
+dev = [
+    { name = "dagster-webserver", specifier = "==1.13.31" },
+    { name = "pysail", specifier = "==0.7.3" },
+    { name = "pytest", specifier = "==8.4.2" },
+]
 
 [[package]]
 name = "mako"
@@ -637,6 +652,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pluggy"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/db/7fc19e6f2dc92a966727031389fc2e08b558f0f25eb7403c1119ad4713cd/pluggy-1.7.0.tar.gz", hash = "sha256:d1eaa46ebb595891b860ab086b4d09c8588af65ebd4361b8e8f4bb8920b90ba8", size = 123304, upload-time = "2026-10-15T09:50:58.343Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/9e/2b38731e0fc536806f16490e1a12d7f0dc2a1235aa8cc07bcc75416a7daa/pluggy-1.7.0-py3-none-any.whl", hash = "sha256:7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec", size = 27082, upload-time = "2026-10-15T09:50:56.808Z" },
+]
+
+[[package]]
 name = "propcache"
 version = "0.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -785,6 +809,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pysail"
+version = "0.7.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2a/c1/0b4092200d2fa78c831bd36a0832840db47c8ad0ef3332da5f0eadb0ceeb/pysail-0.7.3.tar.gz", hash = "sha256:131aacfbf2c7bccc6b0a73417d37f65ffb5223ee8f9c176866f388da8cf73d69", size = 4793893, upload-time = "2026-10-30T14:37:35.674Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/4d/1151fcb6f8d60423ecdfd4f5ca3edcaa9b3166d06a1d53e1c08f452d645a/pysail-0.7.3-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:861168f9f5e35ebb98c905ed00e3212fbd4d20969e9fc04421a21bf947350538", size = 63850719, upload-time = "2026-10-30T14:37:18.043Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/d2/734a30899d0048bfa1adb03991a6a448e4fe84f5bdf3b2fc8b41d570204e/pysail-0.7.3-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:11600cfad30cfb9ae4edd43b1ca9985b019de37cf5821d6bb2275dbd7a5a48aa", size = 59255365, upload-time = "2026-10-30T14:37:21.746Z" },
+    { url = "https://files.pythonhosted.org/packages/98/31/8f97d69715e5c5dfcdc7ad06840ad23e85b971979fe9283f8c549c96dd9f/pysail-0.7.3-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:b9a308f8216b65c15f0e3666482ba602e962ec25408d42570a18b35f090dfdda", size = 65226634, upload-time = "2026-10-30T14:37:25.624Z" },
+    { url = "https://files.pythonhosted.org/packages/51/a2/b058755583d1060153d92803d374f4a02fdb1b32fa416c3c3ac92fa0e15d/pysail-0.7.3-cp38-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:ad8a68232cca4cd96b70645a7d5a122b2ecdd5300a9335fd537793686b9000ef", size = 61653642, upload-time = "2026-10-30T14:37:29.33Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/fa/2cd7e70f661a9b296f2f3521004d3c79244a6ad96760af3f6f77e6bf8e0e/pysail-0.7.3-cp38-abi3-win_amd64.whl", hash = "sha256:96fdc4357afb5f61e5883ed13ba1c96d00d966bca7b45beb0d15b40960fee11c", size = 71107587, upload-time = "2026-10-30T14:37:32.929Z" },
+]
+
+[[package]]
 name = "pyspark-client"
 version = "4.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -797,6 +834,22 @@ dependencies = [
     { name = "pyarrow" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/17/d1/dcb7fcecc39461350a0153ef3d61c629f51be30092a6362960a2fc2c08ff/pyspark_client-4.0.1.tar.gz", hash = "sha256:0bf8af4ec809906434175b1f25204d9507b5d2d358a82adeb1e8126292b3775b", size = 1498804, upload-time = "2025-09-06T07:16:35.05Z" }
+
+[[package]]
+name = "pytest"
+version = "8.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "iniconfig" },
+    { name = "packaging" },
+    { name = "pluggy" },
+    { name = "pygments" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a3/5c/00a0e072241553e1a7496d638deababa67c5058571567b92a7eaa258397c/pytest-8.4.2.tar.gz", hash = "sha256:86c0d0b93306b961d58d62a4db4879f27fe25513d4b969df351abdddb3c30e01", size = 1519618, upload-time = "2025-09-04T14:34:22.711Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a8/a4/20da314d277121d6534b3a980b29035dcd51e6744bd79075a6ce8fa4eb8d/pytest-8.4.2-py3-none-any.whl", hash = "sha256:872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79", size = 365750, upload-time = "2025-09-04T14:34:20.226Z" },
+]
 
 [[package]]
 name = "python-dateutil"

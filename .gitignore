@@ -5,3 +5,4 @@ __pycache__/
 viz/tmp/
 viz/.env
 bench/results.json
+.pytest_cache/
