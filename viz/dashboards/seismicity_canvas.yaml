@@ -1,18 +1,17 @@
 type: canvas
 display_name: Seismicity
-defaults:
-  time_range: P7D
 rows:
   - height: 460px
     items:
-      - width: 8
+      - width: 6
         custom_chart:
           title: Gutenberg-Richter curves (earthquakes at or above each magnitude, log scale)
-          metrics_sql: |
-            SELECT region, mag_bin, n_cum
-            FROM magnitude_frequency_metrics
-            WHERE region IN ('ALL', 'CA', 'Alaska', 'Japan')
-            ORDER BY mag_bin
+          metrics_sql:
+            - |
+              SELECT region, mag_bin, n_cum
+              FROM magnitude_frequency_metrics
+              WHERE region IN ('ALL', 'CA', 'Alaska', 'Japan')
+              ORDER BY mag_bin
           vega_spec: |-
             {
               "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
@@ -32,21 +31,10 @@ rows:
                 ]
               }
             }
-      - width: 4
+      - width: 6
         table:
           metrics_view: seismicity_metrics
           title: Detection threshold and b-value per region
           columns: [region, events, mc, b_value]
           sort_by: events
-  - items:
-      - width: 12
-        kpi_grid:
-          metrics_view: revisions_metrics
-          measures: [live_events, share_revised, median_minutes_to_first_seen, avg_abs_mag_change, type_changes]
-  - items:
-      - width: 12
-        table:
-          metrics_view: revisions_metrics
-          title: Most revised live events
-          columns: [id, region, max_versions, avg_abs_mag_change]
-          sort_by: max_versions
+          hide_totals_row: true

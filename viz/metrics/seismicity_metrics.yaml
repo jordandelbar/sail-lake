@@ -8,7 +8,7 @@ dimensions:
 
 measures:
   - {name: events, display_name: Earthquakes, expression: SUM(events), format_preset: humanize}
-  - {name: mc, display_name: Completeness magnitude (Mc), expression: MAX(mc), format_d3: ".1f"}
-  - {name: b_value, display_name: b-value, expression: MAX(b_value), format_d3: ".2f"}
+  - {name: mc, display_name: Mc, description: Completeness magnitude (smallest magnitude reliably detected), expression: MAX(mc), format_d3: ".1f"}
+  - {name: b_value, display_name: b-value, description: Gutenberg-Richter slope (Aki-Utsu MLE above Mc), expression: MAX(b_value), format_d3: ".2f"}
   - {name: events_above_mc, display_name: Earthquakes above Mc, expression: SUM(events_above_mc), format_preset: humanize}
   - {name: max_mag, display_name: Max magnitude, expression: MAX(max_mag), format_d3: ".1f"}

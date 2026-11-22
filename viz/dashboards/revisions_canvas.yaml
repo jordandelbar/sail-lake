@@ -1,0 +1,18 @@
+type: canvas
+display_name: USGS revisions
+defaults:
+  time_range: P7D
+rows:
+  - items:
+      - width: 12
+        kpi_grid:
+          metrics_view: revisions_metrics
+          measures: [live_events, share_revised, median_minutes_to_first_seen, avg_abs_mag_change, type_changes]
+  - items:
+      - width: 12
+        table:
+          metrics_view: revisions_metrics
+          title: Most revised live events
+          columns: [id, region, max_versions, avg_abs_mag_change]
+          sort_by: max_versions
+          hide_totals_row: true
