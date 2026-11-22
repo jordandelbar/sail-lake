@@ -36,18 +36,14 @@ def test_merge_is_idempotent_and_only_newer_versions_replace(spark, tmp_path):
     def state():
         return sorted((r.id, r.mag) for r in spark.table(table).collect())
 
-    merge_events(spark, table, v2)
-    merge_events(spark, table, v2)
+    merge_events(table, v2)
+    merge_events(table, v2)
     assert state() == [("a", 2.2)]
 
-    merge_events(
-        spark, table, events(raw_df(spark, [raw_row("a", updated=1, mag=9.9)]))
-    )
+    merge_events(table, events(raw_df(spark, [raw_row("a", updated=1, mag=9.9)])))
     assert state() == [("a", 2.2)], "an older version must not overwrite a newer one"
 
-    merge_events(
-        spark, table, events(raw_df(spark, [raw_row("a", updated=3, mag=2.5)]))
-    )
+    merge_events(table, events(raw_df(spark, [raw_row("a", updated=3, mag=2.5)])))
     assert state() == [("a", 2.5)]
     spark.sql(f"DROP TABLE {table}").collect()
 

@@ -1,4 +1,4 @@
-from pyspark.sql import DataFrame, SparkSession, Window
+from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as F
 
 from lake.quakes.raw import region_of
@@ -30,11 +30,11 @@ def events(raw: DataFrame) -> DataFrame:
     )
 
 
-def merge_events(spark: SparkSession, table: str, batch: DataFrame) -> None:
+def merge_events(table: str, batch: DataFrame) -> None:
     """Upsert `batch` (output of `events`) into `table`: an existing event is replaced only by a
     newer version. Idempotent: merging the same batch again changes nothing."""
     batch.createOrReplaceTempView("_events_batch")
-    spark.sql(f"""
+    batch.sparkSession.sql(f"""
         MERGE INTO {table} AS t USING _events_batch AS b ON t.id = b.id
         WHEN MATCHED AND b.updated_time > t.updated_time THEN UPDATE SET *
         WHEN NOT MATCHED THEN INSERT *
