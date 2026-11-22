@@ -19,7 +19,7 @@ sql: |
     ST_AsGeoJSON(ST_Point(lon, lat))::VARCHAR AS location,
     CASE
       WHEN mag IS NULL THEN 'unknown'
-      WHEN mag < 2 THEN '0 to 2'
+      WHEN mag < 2 THEN 'below 2'
       WHEN mag < 3 THEN '2 to 3'
       WHEN mag < 4 THEN '3 to 4'
       WHEN mag < 5 THEN '4 to 5'

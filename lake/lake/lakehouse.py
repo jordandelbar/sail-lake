@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator
 from contextlib import contextmanager
 
@@ -29,8 +30,14 @@ class Lakehouse(dg.ConfigurableResource):
         return f"{self.catalog}.{name}"
 
     def ensure_table(self, spark: SparkSession, name: str, like: DataFrame) -> None:
-        """Create an empty Iceberg table with `like`'s schema, once."""
+        """Create an empty Iceberg table with `like`'s schema, once.
+
+        Each creation gets its own directory: Lakekeeper refuses non-empty locations, and a
+        dropped table's files are not always removed, so a recreated table (schema change,
+        rollback) must never reuse an earlier path.
+        """
         ns, table = name.split(".")
+        table_dir = table.removesuffix("__next")
         spark.sql(f"CREATE NAMESPACE IF NOT EXISTS {self.catalog}.{ns}")
         like.createOrReplaceTempView("_schema_src")
         # explicit LOCATION: by default Sail uses <namespace location>/<table>, and Lakekeeper's flat
@@ -38,17 +45,40 @@ class Lakehouse(dg.ConfigurableResource):
         # (docs/sail-findings.md)
         spark.sql(
             f"CREATE TABLE IF NOT EXISTS {self.table(name)} USING iceberg "
-            f"LOCATION '{self.warehouse}/{ns}/{table}' "
+            f"LOCATION '{self.warehouse}/{ns}/{table_dir}/{uuid.uuid4().hex[:12]}' "
             "AS SELECT * FROM _schema_src WHERE false"
         )
 
     def overwrite(self, spark: SparkSession, name: str, df: DataFrame) -> int:
-        """Replace the table's content with df in one snapshot; returns the new row count."""
+        """Replace the table's content with df in one snapshot; returns the new row count.
+
+        Overwritten tables are fully recomputed. On a schema change the replacement is built
+        completely as "<name>__next" first, then swapped in (drop + rename), so readers keep the
+        previous result until it exists and a failed build leaves it untouched. Sail does not
+        apply overwriteSchema to catalog tables, hence the swap. Merged tables (quakes.events)
+        never go through here.
+        """
+        fq = self.table(name)
+        if (
+            spark.catalog.tableExists(fq)
+            and spark.table(fq).schema.simpleString() != df.schema.simpleString()
+        ):
+            nxt = f"{name}__next"
+            spark.sql(
+                f"DROP TABLE IF EXISTS {self.table(nxt)} PURGE"
+            )  # failed earlier swap
+            self._fill(spark, nxt, df)
+            spark.sql(f"DROP TABLE {fq} PURGE")
+            spark.sql(f"ALTER TABLE {self.table(nxt)} RENAME TO {fq}")
+        else:
+            self._fill(spark, name, df)
+        return spark.table(fq).count()
+
+    def _fill(self, spark: SparkSession, name: str, df: DataFrame) -> None:
         self.ensure_table(spark, name, df)
         df.createOrReplaceTempView("_overwrite_src")
-        # one atomic snapshot: readers see the old or the new table, never half of it
+        # one atomic snapshot: readers see the old or the new content, never half of it
         spark.sql(f"INSERT OVERWRITE {self.table(name)} SELECT * FROM _overwrite_src")
-        return spark.table(self.table(name)).count()
 
     def compact(self, spark: SparkSession, name: str) -> int:
         """Rewrite the table into as few data files as possible; returns files rewritten.

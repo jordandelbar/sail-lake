@@ -1,6 +1,6 @@
 version: 1
 type: metrics_view
-display_name: USGS revisions (live events)
+display_name: USGS revisions (live events, captured versions)
 model: event_revisions
 timeseries: event_time
 smallest_time_grain: hour
@@ -8,12 +8,12 @@ smallest_time_grain: hour
 dimensions:
   - {name: id, display_name: Event, column: id}
   - {name: region, display_name: Region, column: region}
-  - {name: final_type, display_name: Final type, column: final_type}
+  - {name: latest_type, display_name: Latest captured type, column: latest_type}
 
 measures:
   - {name: live_events, display_name: Live events, expression: COUNT(*), format_preset: humanize}
-  - {name: share_revised, display_name: Revised at least once, expression: AVG(CASE WHEN versions > 1 THEN 1 ELSE 0 END), format_preset: percentage}
-  - {name: max_versions, display_name: Versions, expression: MAX(versions), format_preset: humanize}
-  - {name: median_minutes_to_first_seen, display_name: Median minutes to first report, expression: MEDIAN(minutes_to_first_seen), format_d3: ".1f"}
-  - {name: avg_abs_mag_change, display_name: Avg magnitude correction, expression: AVG(ABS(mag_change)), format_d3: ".3f"}
-  - {name: type_changes, display_name: Type changes, expression: SUM(CASE WHEN type_changed THEN 1 ELSE 0 END), format_preset: humanize}
+  - {name: share_revised, display_name: More than one captured version, description: Share of live events for which this pipeline captured several versions, expression: AVG(CASE WHEN versions_captured > 1 THEN 1 ELSE 0 END), format_preset: percentage}
+  - {name: max_versions, display_name: Captured versions, expression: MAX(versions_captured), format_preset: humanize}
+  - {name: median_minutes_to_first_seen, display_name: Median minutes until first observed, description: From event time until this pipeline first captured the event (only events captured since observation times were recorded), expression: MEDIAN(minutes_to_first_observed), format_d3: ".1f"}
+  - {name: avg_abs_mag_change, display_name: Avg net magnitude change, description: Absolute difference between the earliest and latest captured magnitudes; reversals in between cancel out, expression: AVG(ABS(net_mag_change)), format_d3: ".3f"}
+  - {name: type_changes, display_name: Type differs (earliest vs latest), description: Events whose earliest and latest captured types differ; A to B to A counts as no difference, expression: SUM(CASE WHEN type_differs THEN 1 ELSE 0 END), format_preset: humanize}

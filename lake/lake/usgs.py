@@ -8,7 +8,8 @@ RAW = "s3://lake/raw/quakes/"
 # dt is the hive partition from the path (landing date).
 RAW_SCHEMA = (
     "id STRING, time BIGINT, updated BIGINT, mag DOUBLE, magType STRING, place STRING, "
-    "type STRING, tsunami INT, lon DOUBLE, lat DOUBLE, depth DOUBLE, source STRING, dt DATE"
+    "type STRING, tsunami INT, lon DOUBLE, lat DOUBLE, depth DOUBLE, source STRING, "
+    "observed BIGINT, dt DATE"
 )
 
 

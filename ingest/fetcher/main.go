@@ -38,17 +38,22 @@ type Event struct {
 	Lat     float64  `json:"lat"`
 	Depth   float64  `json:"depth"`
 	Source  string   `json:"source"` // "feed" (live, revisions over time) or "backfill" (final version only)
+	// Observed is when this fetcher captured this version (unix ms), not when USGS published it.
+	// Only the first capture of a version reaches the lake: later ones are deduplicated.
+	Observed int64 `json:"observed"`
 }
 
-// MsgID is the JetStream dedup key: a revised event (new `updated`) gets through.
-func (e Event) MsgID() string { return fmt.Sprintf("%s:%d", e.ID, e.Updated) }
+// MsgID is the JetStream dedup key: a revised event (new `updated`) gets through. The source is
+// part of it so a backfilled copy never suppresses the live observation of the same version
+// (the lake deduplicates events itself).
+func (e Event) MsgID() string { return fmt.Sprintf("%s:%s:%d", e.Source, e.ID, e.Updated) }
 
 type feed struct {
 	Features []struct {
 		ID         string `json:"id"`
 		Properties struct {
-			Time    int64    `json:"time"`
-			Updated int64    `json:"updated"`
+			Time    *int64   `json:"time"`
+			Updated *int64   `json:"updated"`
 			Mag     *float64 `json:"mag"`
 			MagType *string  `json:"magType"`
 			Place   *string  `json:"place"`
@@ -56,12 +61,13 @@ type feed struct {
 			Tsunami int      `json:"tsunami"`
 		} `json:"properties"`
 		Geometry struct {
-			Coordinates []float64 `json:"coordinates"` // lon, lat, depth
+			Coordinates []*float64 `json:"coordinates"` // lon, lat, depth; pointers to tell null from 0
 		} `json:"geometry"`
 	} `json:"features"`
 }
 
-// parseFeed maps a GeoJSON feed to events, skipping features without full coordinates.
+// parseFeed maps a GeoJSON feed to events, skipping features without an id, timestamps or full
+// coordinates (JSON null would otherwise decode as 0).
 func parseFeed(body []byte, source string) ([]Event, error) {
 	var f feed
 	if err := json.Unmarshal(body, &f); err != nil {
@@ -70,13 +76,13 @@ func parseFeed(body []byte, source string) ([]Event, error) {
 	events := make([]Event, 0, len(f.Features))
 	for _, ft := range f.Features {
 		c, p := ft.Geometry.Coordinates, ft.Properties
-		if len(c) < 3 {
-			log.Printf("skip %s: %d coordinates", ft.ID, len(c))
+		if reason := invalid(ft.ID, p.Time, p.Updated, c); reason != "" {
+			log.Printf("skip %q: %s", ft.ID, reason)
 			continue
 		}
 		events = append(events, Event{
-			ID: ft.ID, Time: p.Time, Updated: p.Updated, Mag: p.Mag, MagType: p.MagType,
-			Place: p.Place, Type: p.Type, Tsunami: p.Tsunami, Lon: c[0], Lat: c[1], Depth: c[2],
+			ID: ft.ID, Time: *p.Time, Updated: *p.Updated, Mag: p.Mag, MagType: p.MagType,
+			Place: p.Place, Type: p.Type, Tsunami: p.Tsunami, Lon: *c[0], Lat: *c[1], Depth: *c[2],
 			Source: source,
 		})
 	}
@@ -101,7 +107,24 @@ func fetch(ctx context.Context, url, source string) ([]Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parseFeed(body, source)
+	events, err := parseFeed(body, source)
+	now := time.Now().UnixMilli()
+	for i := range events {
+		events[i].Observed = now
+	}
+	return events, err
+}
+
+func invalid(id string, t, updated *int64, c []*float64) string {
+	switch {
+	case id == "":
+		return "no id"
+	case t == nil || updated == nil:
+		return "no time or updated"
+	case len(c) < 3 || c[0] == nil || c[1] == nil || c[2] == nil:
+		return "incomplete coordinates"
+	}
+	return ""
 }
 
 const fdsn = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time-asc"
@@ -176,17 +199,39 @@ func env(key, def string) string {
 	return def
 }
 
+// intEnv reads an integer setting, failing on malformed values or values below min.
+func intEnv(key, def string, min int) (int, error) {
+	v, err := strconv.Atoi(env(key, def))
+	if err != nil || v < min {
+		return 0, fmt.Errorf("%s=%q: want an integer >= %d", key, env(key, def), min)
+	}
+	return v, nil
+}
+
 func main() {
 	url := env("FEED", "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson")
-	every, err := strconv.Atoi(env("EVERY_S", "60"))
+	every, err := intEnv("EVERY_S", "60", 1)
 	if err != nil {
-		log.Fatalf("EVERY_S: %v", err)
+		log.Fatal(err)
+	}
+	days, err := intEnv("BACKFILL_DAYS", "0", 0)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	nc, err := nats.Connect(env("NATS_URL", "nats://nats:4222"))
+	// Reconnect forever: the default budget (60 x 2s) leaves a closed connection after a longer
+	// NATS outage. If it closes anyway while we still run, exit so Kubernetes restarts the pod.
+	nc, err := nats.Connect(env("NATS_URL", "nats://nats:4222"),
+		nats.MaxReconnects(-1),
+		nats.ClosedHandler(func(*nats.Conn) {
+			if ctx.Err() == nil {
+				log.Fatal("nats: connection closed")
+			}
+		}),
+	)
 	if err != nil {
 		log.Fatalf("nats: %v", err)
 	}
@@ -195,7 +240,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("jetstream: %v", err)
 	}
-	if days, _ := strconv.Atoi(env("BACKFILL_DAYS", "0")); days > 0 {
+	if days > 0 {
 		if err := ensureStream(ctx, js); err != nil {
 			log.Fatalf("stream: %v", err)
 		}

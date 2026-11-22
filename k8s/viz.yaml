@@ -20,7 +20,7 @@ spec:
           command:
             - sh
             - -c
-            - until curl -sf 'http://lakekeeper.catalog:8181/catalog/v1/config?warehouse=lake' >/dev/null; do sleep 2; done
+            - i=0; until curl -sf --max-time 5 'http://lakekeeper.catalog:8181/catalog/v1/config?warehouse=lake' >/dev/null; do i=$((i+1)); [ $i -lt 150 ] || { echo "gave up waiting for the lake warehouse after 5 min"; exit 1; }; sleep 2; done
       containers:
         - name: rill
           image: viz:dev

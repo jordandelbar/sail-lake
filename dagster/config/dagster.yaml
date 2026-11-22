@@ -12,6 +12,12 @@ run_coordinator:
   class: QueuedRunCoordinator
   config:
     max_concurrent_runs: 1 # one Sail driver, keep jobs serial
+run_monitoring:
+  enabled: true
+  start_timeout_seconds: 180
+  max_runtime_seconds: 900
+  max_resume_run_attempts: 0
+  poll_interval_seconds: 60
 # Default run launcher: runs execute as subprocesses inside the code location pod.
 # ponytail: K8sRunLauncher (pod per run) when runs need isolation from the code server.
 # ponytail: stdout capture off (would sit in the code pod, unreadable from the UI). context.log goes to Postgres.

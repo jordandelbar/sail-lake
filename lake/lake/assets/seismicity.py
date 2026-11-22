@@ -54,6 +54,7 @@ def quakes_magnitude_frequency(lakehouse: Lakehouse) -> dg.MaterializeResult:
 class SeismicityConfig(dg.Config):
     min_events_for_b: int = Field(
         default=200,
+        ge=1,
         description="Minimum earthquakes at or above Mc to report a b-value; "
         "below that the estimate is mostly noise.",
     )

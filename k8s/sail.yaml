@@ -61,6 +61,10 @@ spec:
             - "50051"
           ports:
             - containerPort: 50051
+          readinessProbe:
+            tcpSocket:
+              port: 50051
+            periodSeconds: 5
           envFrom:
             - secretRef:
                 name: s3-creds

@@ -18,6 +18,7 @@ raw_quakes = dg.AssetSpec(
 class EventsConfig(dg.Config):
     raw_lookback_days: int = Field(
         default=2,
+        ge=1,
         description="Days of raw/ (by landing date) merged per run. The live feed stops revising "
         "an event once it leaves the 24h feed, so 2 days covers every revision.",
     )

@@ -174,11 +174,11 @@ spec:
             - -ec
             - |
               api=http://lakekeeper:8181/management/v1
-              until curl -sf http://lakekeeper:8181/health >/dev/null; do sleep 2; done
-              curl -s $api/info | grep -q '"bootstrapped":true' ||
-                curl -s --fail-with-body -X POST $api/bootstrap -H 'Content-Type: application/json' -d '{"accept-terms-of-use": true}'
-              curl -s $api/warehouse | grep -q '"name":"lake"' && exit 0
-              curl -s --fail-with-body -X POST $api/warehouse -H 'Content-Type: application/json' -d "{
+              i=0; until curl -sf --max-time 5 http://lakekeeper:8181/health >/dev/null; do i=$((i+1)); [ $i -lt 150 ] || { echo "gave up waiting for Lakekeeper after 5 min"; exit 1; }; sleep 2; done
+              curl -s --max-time 30 $api/info | grep -q '"bootstrapped":true' ||
+                curl -s --max-time 30 --fail-with-body -X POST $api/bootstrap -H 'Content-Type: application/json' -d '{"accept-terms-of-use": true}'
+              curl -s --max-time 30 $api/warehouse | grep -q '"name":"lake"' && exit 0
+              curl -s --max-time 30 --fail-with-body -X POST $api/warehouse -H 'Content-Type: application/json' -d "{
                 \"warehouse-name\": \"lake\",
                 \"storage-profile\": {
                   \"type\": \"s3\", \"flavor\": \"s3-compat\", \"bucket\": \"lake\", \"key-prefix\": \"warehouse\",

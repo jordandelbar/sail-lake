@@ -16,7 +16,7 @@ spec:
           command:
             - sh
             - -c
-            - until curl -sf http://nats:8222/healthz >/dev/null; do sleep 1; done
+            - i=0; until curl -sf --max-time 5 http://nats:8222/healthz >/dev/null; do i=$((i+1)); [ $i -lt 150 ] || { echo "gave up waiting for NATS after 5 min"; exit 1; }; sleep 2; done
       containers:
         - name: backfill
           image: fetcher:dev

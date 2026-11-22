@@ -2,6 +2,8 @@
 
 ## Spark vs Sail
 
+Measured at commit [`19f9354`](https://github.com/jordandelbar/sail-lake/tree/19f935493a8c9e64250a23efd6e209d0098b39b2); the code has changed a lot since.
+
 Both engines ran in single-node local mode, one after the other, in identical pods (2 CPU and 4Gi of memory, Guaranteed QoS) on the large node. They used the same `pyspark-client==4.0.1` script, the same 20 million row Parquet dataset on versitygw, and default settings. Each query ran once as a warm-up and then three times; the table shows the median. Both engines returned the same answers for all four queries.
 
 |                                         | Sail 0.7.3 | Spark 4.0.1               |
