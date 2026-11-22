@@ -17,7 +17,7 @@ default:
 up: cluster lb image deploy
 
 cluster:
-    mkdir -p data/s3/lake data/catalog/postgres data/dagster/postgres
+    mkdir -p data/s3/lake data/catalog/postgres data/dagster/postgres data/nats
     kind get clusters | grep -qx {{ cluster }} || kind create cluster --config kind.yaml
 
 # LoadBalancer Services for kind: runs on the host (not in the cluster), needs the docker socket
@@ -65,6 +65,13 @@ ship image dir namespace deployment:
     kind load docker-image {{ image }} --name {{ cluster }}
     kubectl -n {{ namespace }} rollout restart deploy/{{ deployment }}
     kubectl -n {{ namespace }} rollout status deploy/{{ deployment }}
+
+# Publish a year of USGS history into the ingest path (one-off Job, safe to re-run)
+backfill:
+    kubectl -n ingest delete job quakes-backfill --ignore-not-found
+    kubectl apply -f k8s/backfill.yaml
+    kubectl -n ingest wait --for=condition=complete job/quakes-backfill --timeout=30m
+    kubectl -n ingest logs job/quakes-backfill --tail=3
 
 # Spark vs Sail on identical single-node pods (writes bench/results.json); ROWS=... to resize
 bench:

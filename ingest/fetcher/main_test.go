@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 const sample = `{"features":[
@@ -14,7 +15,7 @@ const sample = `{"features":[
 ]}`
 
 func TestParseFeed(t *testing.T) {
-	events, err := parseFeed([]byte(sample))
+	events, err := parseFeed([]byte(sample), "feed")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,11 +28,23 @@ func TestParseFeed(t *testing.T) {
 	}
 	// nulls stay null in the output, Sail reads them as missing values
 	b, _ := json.Marshal(events[1])
-	want := `{"id":"ak2","time":3,"updated":4,"mag":null,"magType":null,"place":null,"type":"earthquake","tsunami":1,"lon":-150,"lat":61,"depth":10}`
+	want := `{"id":"ak2","time":3,"updated":4,"mag":null,"magType":null,"place":null,"type":"earthquake","tsunami":1,"lon":-150,"lat":61,"depth":10,"source":"feed"}`
 	if string(b) != want {
 		t.Fatalf("got  %s\nwant %s", b, want)
 	}
-	if _, err := parseFeed([]byte("not json")); err == nil {
+	if _, err := parseFeed([]byte("not json"), "feed"); err == nil {
 		t.Fatal("want error on invalid json")
+	}
+}
+
+func TestWindows(t *testing.T) {
+	day := 24 * time.Hour
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	w := windows(from, from.Add(10*day), 7*day)
+	if len(w) != 2 || w[0][1] != from.Add(7*day) || w[1][0] != from.Add(7*day) || w[1][1] != from.Add(10*day) {
+		t.Fatalf("want [0,7) [7,10), got %v", w)
+	}
+	if len(windows(from, from, 7*day)) != 0 {
+		t.Fatal("empty range must give no window")
 	}
 }

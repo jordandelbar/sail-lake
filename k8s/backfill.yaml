@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: quakes-backfill
+  namespace: ingest
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        tier: medium
+      initContainers:
+        - name: wait-for-nats
+          image: curlimages/curl:8.17.0
+          command:
+            - sh
+            - -c
+            - until curl -sf http://nats:8222/healthz >/dev/null; do sleep 1; done
+      containers:
+        - name: backfill
+          image: fetcher:dev
+          env:
+            - name: BACKFILL_DAYS
+              value: "365"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              memory: 256Mi

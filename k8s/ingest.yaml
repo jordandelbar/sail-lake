@@ -47,6 +47,13 @@ spec:
     spec:
       nodeSelector:
         tier: medium
+      initContainers:
+        - name: wait-for-stream
+          image: curlimages/curl:8.17.0
+          command:
+            - sh
+            - -c
+            - until curl -sf 'http://nats:8222/jsz?streams=true' | grep -q '"QUAKES"'; do sleep 2; done
       containers:
         - name: connect
           image: docker.redpanda.com/redpandadata/connect:4
@@ -79,6 +86,8 @@ metadata:
   name: nats
   namespace: ingest
 spec:
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: nats
@@ -118,9 +127,14 @@ spec:
               memory: 128Mi
             limits:
               memory: 512Mi
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
       volumes:
         - name: data
-          emptyDir: {}
+          hostPath:
+            path: /data/nats
+            type: Directory
 ---
 apiVersion: v1
 kind: Service

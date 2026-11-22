@@ -1,0 +1,11 @@
+type: model
+connector: duckdb
+create_secrets_from_connectors: s3
+materialize: true
+refresh:
+  cron: "*/15 * * * *"
+pre_exec: >
+  INSTALL iceberg; LOAD iceberg;
+  ATTACH IF NOT EXISTS 'lake' AS lake (TYPE iceberg, ENDPOINT 'http://lakekeeper.catalog:8181/catalog',
+  AUTHORIZATION_TYPE 'none', ACCESS_DELEGATION_MODE 'none')
+sql: SELECT * FROM lake.quakes.region_seismicity

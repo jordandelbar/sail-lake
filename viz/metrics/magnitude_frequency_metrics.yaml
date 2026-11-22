@@ -1,0 +1,12 @@
+version: 1
+type: metrics_view
+display_name: Magnitude-frequency
+model: mag_freq
+
+dimensions:
+  - {name: region, display_name: Region, column: region}
+  - {name: mag_bin, display_name: Magnitude, column: mag_bin}
+
+measures:
+  - {name: n, display_name: Earthquakes in bin, expression: SUM(n), format_preset: humanize}
+  - {name: n_cum, display_name: Earthquakes at or above, expression: SUM(n_cum), format_preset: humanize}

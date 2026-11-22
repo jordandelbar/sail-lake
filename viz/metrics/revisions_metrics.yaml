@@ -1,0 +1,19 @@
+version: 1
+type: metrics_view
+display_name: USGS revisions (live events)
+model: event_revisions
+timeseries: event_time
+smallest_time_grain: hour
+
+dimensions:
+  - {name: id, display_name: Event, column: id}
+  - {name: region, display_name: Region, column: region}
+  - {name: final_type, display_name: Final type, column: final_type}
+
+measures:
+  - {name: live_events, display_name: Live events, expression: COUNT(*), format_preset: humanize}
+  - {name: share_revised, display_name: Revised at least once, expression: AVG(CASE WHEN versions > 1 THEN 1 ELSE 0 END), format_preset: percentage}
+  - {name: max_versions, display_name: Versions, expression: MAX(versions), format_preset: humanize}
+  - {name: median_minutes_to_first_seen, display_name: Median minutes to first report, expression: MEDIAN(minutes_to_first_seen), format_d3: ".1f"}
+  - {name: avg_abs_mag_change, display_name: Avg magnitude correction, expression: AVG(ABS(mag_change)), format_d3: ".3f"}
+  - {name: type_changes, display_name: Type changes, expression: SUM(CASE WHEN type_changed THEN 1 ELSE 0 END), format_preset: humanize}
