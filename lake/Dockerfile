@@ -7,5 +7,5 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 ENV DAGSTER_HOME=/opt/dagster/home
 RUN mkdir -p $DAGSTER_HOME
-COPY defs.py .
-CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-f", "defs.py"]
+COPY lake ./lake
+CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "lake.definitions", "-d", "/app"]
