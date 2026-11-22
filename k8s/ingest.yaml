@@ -26,10 +26,10 @@ spec:
           image: fetcher:dev
           resources:
             requests:
-              cpu: 50m
-              memory: 64Mi
+              cpu: 20m
+              memory: 32Mi
             limits:
-              memory: 256Mi
+              memory: 128Mi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -72,9 +72,9 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 256Mi
+              memory: 128Mi
             limits:
-              memory: 512Mi
+              memory: 384Mi
       volumes:
         - name: app
           configMap:
@@ -123,10 +123,10 @@ spec:
               mountPath: /data
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
+              cpu: 50m
+              memory: 64Mi
             limits:
-              memory: 512Mi
+              memory: 256Mi
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000

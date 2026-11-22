@@ -24,7 +24,7 @@ The 0.03 s filtered scan on Sail is too fast for a real read of 20 million rows 
 
 Spark needs `hadoop-aws` and the 558 MB AWS SDK v2 bundle to read S3, which accounts for much of its image size. Most of Sail's 1.7 GB comes from the Python client libraries in the image, not from Sail itself.
 
-This was one run on one machine. Read the numbers as orders of magnitude. To run it again: `just bench`, with `ROWS=...` to change the dataset size. Results go to `bench/results.json`.
+This was one run on one machine. Read the numbers as orders of magnitude. To run it again: `just bench`, with `ROWS=...` to change the dataset size. Since the nodes were shrunk, `just bench` runs smaller pods (1.5 CPU and 1.5Gi), so its numbers will not match the table above. Results go to `bench/results.json`.
 
 ## Bug: Sail picks Iceberg table locations itself
 

@@ -12,7 +12,7 @@ nodes:
         nodeRegistration:
           kubeletExtraArgs:
             - name: system-reserved
-              value: cpu=14,memory=28050Mi
+              value: cpu=14,memory=28562Mi
             - name: node-labels
               value: tier=small
   - role: worker
@@ -22,7 +22,7 @@ nodes:
         nodeRegistration:
           kubeletExtraArgs:
             - name: system-reserved
-              value: cpu=14,memory=28050Mi
+              value: cpu=14,memory=28562Mi
             - name: node-labels
               value: tier=medium
   - role: worker
@@ -32,6 +32,6 @@ nodes:
         nodeRegistration:
           kubeletExtraArgs:
             - name: system-reserved
-              value: cpu=13,memory=26000Mi
+              value: cpu=14,memory=29074Mi
             - name: node-labels
               value: tier=large
