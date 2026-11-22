@@ -5,8 +5,10 @@ dagster_image := "dagster:1.13.31"
 code_image := "lake-code:dev"
 fetcher_image := "fetcher:dev"
 viz_image := "viz:dev"
-cluster := "sail-lake"
+cluster := "minilake"
 cpk_image := "registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.12.0"
+# namespaces whose pods talk to S3 and need the s3-creds Secret
+s3_namespaces := "storage ingest catalog compute viz bench"
 
 default:
     @just --list
@@ -15,7 +17,7 @@ default:
 up: cluster lb image deploy
 
 cluster:
-    mkdir -p data/s3/lake
+    mkdir -p data/s3/lake data/catalog/postgres data/dagster/postgres
     kind get clusters | grep -qx {{ cluster }} || kind create cluster --config kind.yaml
 
 # LoadBalancer Services for kind: runs on the host (not in the cluster), needs the docker socket
@@ -32,29 +34,37 @@ image:
     docker build -t {{ viz_image }} viz/
     kind load docker-image {{ sail_image }} {{ dagster_image }} {{ code_image }} {{ fetcher_image }} {{ viz_image }} --name {{ cluster }}
 
-configmaps:
-    kubectl create configmap s3-sink --from-file=ingest/s3-sink/ --dry-run=client -o yaml | kubectl apply -f -
-    kubectl create configmap dagster-instance --from-file=dagster/config/ --dry-run=client -o yaml | kubectl apply -f -
+# s3-creds Secret in every namespace that uses S3, from k8s/s3-creds.env
+secrets:
+    for ns in {{ s3_namespaces }}; do \
+        kubectl -n $ns create secret generic s3-creds --from-env-file=k8s/s3-creds.env --dry-run=client -o yaml | kubectl apply -f -; \
+    done
 
-deploy: configmaps
-    kubectl apply -f k8s/infra.yaml -f k8s/catalog.yaml -f k8s/sail.yaml -f k8s/ingest.yaml -f k8s/dagster.yaml -f k8s/lake-code.yaml -f k8s/viz.yaml
+configmaps:
+    kubectl -n ingest create configmap s3-sink --from-file=ingest/s3-sink/ --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n orchestration create configmap dagster-instance --from-file=dagster/config/ --dry-run=client -o yaml | kubectl apply -f -
+
+deploy:
+    kubectl apply -f k8s/namespaces.yaml
+    just secrets configmaps
+    kubectl apply -f k8s/storage.yaml -f k8s/ingest.yaml -f k8s/catalog.yaml -f k8s/sail.yaml -f k8s/dagster.yaml -f k8s/lake-code.yaml -f k8s/viz.yaml
 
 # Redeploy user code only, Dagster system untouched
-code: (ship code_image "lake/" "lake-code")
+code: (ship code_image "lake/" "orchestration" "lake-code")
 
 # Redeploy the fetcher only
-fetcher: (ship fetcher_image "ingest/fetcher/" "fetcher")
+fetcher: (ship fetcher_image "ingest/fetcher/" "ingest" "fetcher")
 
 # Redeploy the Rill dashboards only
-viz: (ship viz_image "viz/" "viz")
+viz: (ship viz_image "viz/" "viz" "viz")
 
 # Build one image, load it into kind, restart its deployment
 [private]
-ship image dir deployment:
+ship image dir namespace deployment:
     docker build -t {{ image }} {{ dir }}
     kind load docker-image {{ image }} --name {{ cluster }}
-    kubectl rollout restart deploy/{{ deployment }}
-    kubectl rollout status deploy/{{ deployment }}
+    kubectl -n {{ namespace }} rollout restart deploy/{{ deployment }}
+    kubectl -n {{ namespace }} rollout status deploy/{{ deployment }}
 
 # Spark vs Sail on identical single-node pods (writes bench/results.json); ROWS=... to resize
 bench:
@@ -68,7 +78,10 @@ venvs:
 
 # Print the UI URLs (LoadBalancer IPs)
 ui:
-    @for s in dagster-webserver viz lakekeeper; do echo "$s: http://$(kubectl get svc $s -o jsonpath='{.status.loadBalancer.ingress[0].ip}')$([ $s = lakekeeper ] && echo /ui)"; done
+    @for s in orchestration/dagster-webserver viz/viz catalog/lakekeeper; do \
+        ip=$(kubectl -n ${s%/*} get svc ${s#*/} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'); \
+        echo "${s#*/}: http://$ip$([ ${s#*/} = lakekeeper ] && echo /ui)"; \
+    done
 
 # Delete the cluster and the load balancer container (./data is kept)
 down:

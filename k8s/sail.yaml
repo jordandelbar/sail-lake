@@ -1,13 +1,14 @@
-# Sail Spark Connect server (driver) on the medium node; it spawns worker pods on the large node.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: sail
+  namespace: compute
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: sail
+  namespace: compute
 rules:
   - apiGroups:
       - ""
@@ -20,6 +21,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: sail
+  namespace: compute
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -27,11 +29,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: sail
+    namespace: compute
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sail
+  namespace: compute
 spec:
   replicas: 1 # a Spark session lives in one driver pod
   selector:
@@ -93,9 +97,8 @@ spec:
                   fieldPath: metadata.name
             - name: SAIL_KUBERNETES__WORKER_SERVICE_ACCOUNT_NAME
               value: sail
-            # Iceberg REST catalog (k8s/catalog.yaml); tables are addressed as lake.<namespace>.<table>
             - name: SAIL_CATALOG__LIST
-              value: '[{type="iceberg-rest", name="lake", uri="http://lakekeeper:8181/catalog", warehouse="lake"}]'
+              value: '[{type="iceberg-rest", name="lake", uri="http://lakekeeper.catalog:8181/catalog", warehouse="lake"}]'
             - name: SAIL_CATALOG__DEFAULT_CATALOG
               value: lake
             - name: SAIL_KUBERNETES__WORKER_POD_TEMPLATE
@@ -103,18 +106,19 @@ spec:
                 {"spec": {"nodeSelector": {"tier": "large"},
                   "containers": [{"name": "worker",
                     "envFrom": [{"secretRef": {"name": "s3-creds"}}],
-                    "resources": {"requests": {"cpu": "2", "memory": "4Gi"}, "limits": {"memory": "6Gi"}}}]}}
+                    "resources": {"requests": {"cpu": "500m", "memory": "1Gi"}, "limits": {"memory": "2Gi"}}}]}}
           resources:
             requests:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 250m
+              memory: 512Mi
             limits:
-              memory: 3Gi
+              memory: 2Gi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: sail
+  namespace: compute
 spec:
   selector:
     app: sail

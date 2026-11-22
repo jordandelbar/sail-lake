@@ -1,10 +1,8 @@
-# Code location "lake" on the medium node. Redeploy alone on code changes:
-#   just code   (rebuild image, load into kind, restart this deployment)
-# Runs execute here as subprocesses and push the heavy lifting to Sail.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lake-code
+  namespace: orchestration
 spec:
   selector:
     matchLabels:
@@ -24,7 +22,7 @@ spec:
                 name: dagster-pg
           env:
             - name: SPARK_REMOTE
-              value: sc://sail:50051
+              value: sc://sail.compute:50051
           ports:
             - containerPort: 4000
           readinessProbe:
@@ -56,6 +54,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: lake-code
+  namespace: orchestration
 spec:
   selector:
     app: lake-code

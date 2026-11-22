@@ -1,9 +1,10 @@
-# Ingest on the medium node: fetcher (USGS -> NATS) and sink (NATS -> S3).
-# Fetcher is a baked image (ingest/fetcher), sink config via: kubectl create configmap s3-sink --from-file=ingest/s3-sink/
+# Ingest: fetcher (USGS -> NATS) and sink (NATS -> S3) on the medium node, NATS on the small node.
+# Fetcher is a baked image (ingest/fetcher), sink config via: just configmaps
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fetcher
+  namespace: ingest
 spec:
   selector:
     matchLabels:
@@ -29,6 +30,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: s3-sink
+  namespace: ingest
 spec:
   selector:
     matchLabels:
@@ -58,10 +60,70 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 64Mi
-            limits:
               memory: 256Mi
+            limits:
+              memory: 512Mi
       volumes:
         - name: app
           configMap:
             name: s3-sink
+---
+# NATS JetStream on the small node; only the ingest pods use it.
+# ponytail: emptyDir JetStream storage, a NATS restart drops unflushed msgs. PVC if that matters.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+  namespace: ingest
+spec:
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      nodeSelector:
+        tier: small
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+      containers:
+        - name: nats
+          image: nats:2.11-alpine
+          args:
+            - -js
+            - -sd
+            - /data
+            - -m
+            - "8222"
+          ports:
+            - containerPort: 4222
+            - containerPort: 8222
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: ingest
+spec:
+  selector:
+    app: nats
+  ports:
+    - name: client
+      port: 4222
+    - name: monitor
+      port: 8222

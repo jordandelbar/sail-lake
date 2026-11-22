@@ -1,8 +1,8 @@
-# Rill dashboards on the medium node, reading the lake via versitygw. UI: just ui
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: viz
+  namespace: viz
 spec:
   selector:
     matchLabels:
@@ -43,14 +43,15 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 768Mi
             limits:
-              memory: 1Gi
+              memory: 1536Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: viz
+  namespace: viz
 spec:
   type: LoadBalancer # IP assigned by cloud-provider-kind (just lb)
   selector:
