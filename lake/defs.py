@@ -1,5 +1,5 @@
 import os
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 
 import dagster as dg
@@ -15,7 +15,7 @@ RAW_LOOKBACK_DAYS = 2
 
 
 @contextmanager
-def sail() -> Iterator[SparkSession]:
+def sail() -> Generator[SparkSession, None, None]:
     """Spark Connect session on Sail, released after the asset body."""
     spark = SparkSession.builder.remote(os.environ["SPARK_REMOTE"]).getOrCreate()
     try:
@@ -91,10 +91,23 @@ def quakes_events(context: dg.AssetExecutionContext) -> dg.MaterializeResult:
             WHEN MATCHED AND b.updated_time > t.updated_time THEN UPDATE SET *
             WHEN NOT MATCHED THEN INSERT *
         """)
+        # Every MERGE adds data files, and in cluster mode Sail scans the MERGE target with one task
+        # per file, all at once: past (max workers x task slots) files the run fails. Compact back
+        # to a single file after each merge. ponytail: rewrites the whole table every run, fine at
+        # this size; use binpack thresholds or a separate maintenance schedule when it grows.
+        compacted = spark.sql(f"""
+            CALL lake.system.rewrite_data_files(
+              table => '{EVENTS.removeprefix("lake.")}', options => map('rewrite-all', 'true'))
+        """).collect()[0]
         batch_rows = events.count()
         rows = spark.table(EVENTS).count()
     return dg.MaterializeResult(
-        metadata={"table": EVENTS, "rows": rows, "batch_rows": batch_rows}
+        metadata={
+            "table": EVENTS,
+            "rows": rows,
+            "batch_rows": batch_rows,
+            "files_compacted": compacted["rewritten_data_files_count"],
+        }
     )
 
 

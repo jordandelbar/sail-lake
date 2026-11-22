@@ -51,6 +51,16 @@ The reference catalog nests namespace locations (`<warehouse>/ns_a`), so the col
 
 In this project, `ensure_table()` in `lake/defs.py` works around it by creating every table with SQL and an explicit `s3://lake/warehouse/<namespace>/<table>` location.
 
+## Iceberg MERGE fails in cluster mode once the target has too many files
+
+Seen in this project with Sail 0.7.3; I did not build a standalone reproduction.
+
+The `quakes_events` asset merges new events into `lake.quakes.events` every 15 minutes. After about a day of runs it started failing with `task region requires 9 worker task slots, but the configured maximum is 8 given a maximum of 2 workers with 4 task slots per worker`, although `execution.default_parallelism` is 8.
+
+`EXPLAIN MERGE ...` showed why: the scan of the target table has one file group per data file (`file_groups={9 groups: ...}`), and that count ignores `default_parallelism`. Each MERGE leaves more data files behind, and in cluster mode all tasks of a task region must run at the same time, so the job fails as soon as the table has more files than the cluster has slots, instead of running the tasks in waves. Local mode does not have this limit.
+
+The workaround in `lake/defs.py` compacts the table after every MERGE with `CALL lake.system.rewrite_data_files(table => 'quakes.events', options => map('rewrite-all', 'true'))`, which Sail supports. After compaction the table has one data file and the runs pass again.
+
 ## Smaller rough edges
 
 - A Sail server installed without `pyspark-client` in the same environment fails on `createDataFrame` with `configuration not found: spark.sql.execution.pandas.inferPandasDictAsMap`. Sail's Dockerfile installs both packages, but the error does not point there. Reproduced.
