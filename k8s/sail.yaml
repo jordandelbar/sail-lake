@@ -37,7 +37,7 @@ metadata:
   name: sail
   namespace: compute
 spec:
-  replicas: 1 # a Spark session lives in one driver pod
+  replicas: 1
   selector:
     matchLabels:
       app: sail
@@ -81,8 +81,6 @@ spec:
               value: "2"
             - name: SAIL_CLUSTER__WORKER_TASK_SLOTS
               value: "4"
-            # Partitions per plan node. Defaults to the driver's CPU count (the host's, here), which
-            # Sail's docs say to override in cluster mode. Keep it <= max workers x task slots.
             - name: SAIL_EXECUTION__DEFAULT_PARALLELISM
               value: "8"
             - name: SAIL_KUBERNETES__IMAGE

@@ -1,34 +1,34 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: storage # versitygw (S3 over ./data/s3)
+  name: storage
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: ingest # NATS, fetcher, s3-sink
+  name: ingest
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: catalog # Lakekeeper and its Postgres
+  name: catalog
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: compute # Sail driver and worker pods
+  name: compute
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: orchestration # Dagster system and the lake code location
+  name: orchestration
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: viz # Rill dashboards
+  name: viz
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: bench # Spark vs Sail benchmark engines
+  name: bench

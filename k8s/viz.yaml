@@ -20,7 +20,6 @@ spec:
           envFrom:
             - secretRef:
                 name: s3-creds
-          # --preview: dashboards only, no code editor. $(VAR) is expanded by Kubernetes from envFrom.
           args:
             - start
             - /project
@@ -53,7 +52,7 @@ metadata:
   name: viz
   namespace: viz
 spec:
-  type: LoadBalancer # IP assigned by cloud-provider-kind (just lb)
+  type: LoadBalancer
   selector:
     app: viz
   ports:

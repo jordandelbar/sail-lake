@@ -13,7 +13,7 @@ metadata:
   namespace: orchestration
 spec:
   strategy:
-    type: Recreate # one pod on the data directory at a time
+    type: Recreate
   selector:
     matchLabels:
       app: dagster-postgres
@@ -64,7 +64,6 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
       volumes:
-        # ./data/dagster/postgres on the host (kind extraMount): survives cluster rebuilds. Owned by uid 1000.
         - name: data
           hostPath:
             path: /data/dagster/postgres
@@ -144,7 +143,7 @@ metadata:
   name: dagster-webserver
   namespace: orchestration
 spec:
-  type: LoadBalancer # IP assigned by cloud-provider-kind (just lb), see `just ui`
+  type: LoadBalancer
   selector:
     app: dagster-webserver
   ports:

@@ -102,7 +102,7 @@ spec:
         - key: node-role.kubernetes.io/control-plane
           effect: NoSchedule
       initContainers:
-        - name: migrate # idempotent schema migrations; retries until Postgres is up
+        - name: migrate
           image: quay.io/lakekeeper/catalog:v0.15.1
           args:
             - migrate
@@ -137,7 +137,7 @@ metadata:
   name: lakekeeper
   namespace: catalog
 spec:
-  type: LoadBalancer # IP assigned by cloud-provider-kind (just lb); UI at /ui
+  type: LoadBalancer
   selector:
     app: lakekeeper
   ports:
@@ -148,7 +148,6 @@ spec:
       targetPort: 8181
       name: api
 ---
-# One-shot, idempotent: bootstrap the server, create warehouse "lake" on versitygw.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -176,10 +175,10 @@ spec:
             - |
               api=http://lakekeeper:8181/management/v1
               until curl -sf http://lakekeeper:8181/health >/dev/null; do sleep 2; done
-              # bootstrap can only happen once; a second call is rejected, which is fine
-              curl -s -X POST $api/bootstrap -H 'Content-Type: application/json' -d '{"accept-terms-of-use": true}'
-              echo
-              code=$(curl -s -o /tmp/out -w '%{http_code}' -X POST $api/warehouse -H 'Content-Type: application/json' -d "{
+              curl -s $api/info | grep -q '"bootstrapped":true' ||
+                curl -s --fail-with-body -X POST $api/bootstrap -H 'Content-Type: application/json' -d '{"accept-terms-of-use": true}'
+              curl -s $api/warehouse | grep -q '"name":"lake"' && exit 0
+              curl -s --fail-with-body -X POST $api/warehouse -H 'Content-Type: application/json' -d "{
                 \"warehouse-name\": \"lake\",
                 \"storage-profile\": {
                   \"type\": \"s3\", \"flavor\": \"s3-compat\", \"bucket\": \"lake\", \"key-prefix\": \"warehouse\",
@@ -191,7 +190,4 @@ spec:
                   \"aws-access-key-id\": \"$AWS_ACCESS_KEY_ID\", \"aws-secret-access-key\": \"$AWS_SECRET_ACCESS_KEY\"
                 },
                 \"delete-profile\": {\"type\": \"hard\"}
-              }")
-              cat /tmp/out; echo
-              # 201 created, 409 already exists: both fine
-              [ "$code" = 201 ] || [ "$code" = 409 ]
+              }"
